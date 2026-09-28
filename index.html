@@ -653,19 +653,30 @@ function validConfig(c){
       d.kras.every(k => k && k.name && Array.isArray(k.kpis) && k.kpis.length && k.kpis.every(p => p && p.name))));
   } catch(e){ return false; }
 }
-let CFG = null, RAG = null, LIB = {}, DEPTS = [], KPI_INDEX = {};
+let CFG = null, RAG = null, LIB = {}, DEPTS = [], KPI_INDEX = {}, UNITS_OF_DEPT = {}, BASE_DEPTS = [];
 function applyConfig(cfg){
   if (!validConfig(cfg)) cfg = buildDefaultConfig();
   CFG = JSON.parse(JSON.stringify(cfg));
   RAG = Object.assign({ green:90, amber:70, cap:120 }, CFG.rag || {});
   RAG.green = +RAG.green; RAG.amber = +RAG.amber; RAG.cap = +RAG.cap || 120;
-  LIB = {}; KPI_INDEX = {};
+  LIB = {}; KPI_INDEX = {}; UNITS_OF_DEPT = {}; BASE_DEPTS = [];
   CFG.depts.forEach(d => {
     const heads = (Array.isArray(d.heads) ? d.heads : String(d.heads || '').split(/[&,]/)).map(s => String(s).trim()).filter(Boolean);
-    LIB[d.name] = { heads, owner: heads.join(' & '), cat: d.cat || 'Management',
-      kras: d.kras.map(k => ({ name:k.name, weight: isNaN(+k.weight) ? 25 : +k.weight,
-        kpis: k.kpis.map(p => { const o = { name:p.name, target: +p.target || 0, unit: p.unit || '', better: p.better || 'higher', type: p.type || 'n', nn: !!p.nn, weight:1, dept:d.name, kra:k.name };
-          KPI_INDEX[d.name + '|' + p.name] = o; return o; }) })) };
+    BASE_DEPTS.push(d.name);
+    UNITS_OF_DEPT[d.name] = [];
+    /* a department with more than one head is tracked as one reporting unit PER HEAD,
+       because each head fills the form separately */
+    const split = heads.length > 1;
+    (split ? heads : [heads[0] || '']).forEach(head => {
+      const unit = split ? d.name + ' — ' + head : d.name;
+      LIB[unit] = { name:unit, dept:d.name, head: split ? head : (heads[0] || ''), split,
+        heads: split ? [head] : heads, allHeads: heads,
+        owner: split ? head : heads.join(' & '), cat: d.cat || 'Management',
+        kras: d.kras.map(k => ({ name:k.name, weight: isNaN(+k.weight) ? 25 : +k.weight,
+          kpis: k.kpis.map(p => { const o = { name:p.name, target: +p.target || 0, unit: p.unit || '', better: p.better || 'higher', type: p.type || 'n', nn: !!p.nn, weight:1, dept:unit, baseDept:d.name, kra:k.name };
+            KPI_INDEX[unit + '|' + p.name] = o; return o; }) })) };
+      UNITS_OF_DEPT[d.name].push(unit);
+    });
   });
   DEPTS = Object.keys(LIB);
 }
@@ -772,12 +783,44 @@ function toast(msg, bad){ const t = $('toast'); t.textContent = msg; t.className
 
 /* ================= tolerant readers ================= */
 const nk = s => String(s === undefined || s === null ? '' : s).toLowerCase().replace(/&/g, 'and').replace(/[^a-z0-9%]/g, '');
-let DEPT_BY_KEY = {}, KPI_BY_KEY = {};
+let DEPT_BY_KEY = {}, KPI_BY_KEY = {}, UNITS_BY_KEY = {};
 function indexConfig(){
   DEPT_BY_KEY = {}; KPI_BY_KEY = {};
+  UNITS_BY_KEY = {};
   DEPTS.forEach(d => { DEPT_BY_KEY[nk(d)] = d; LIB[d].kras.forEach(k => k.kpis.forEach(p => KPI_BY_KEY[nk(d) + '|' + nk(p.name)] = p)); });
+  BASE_DEPTS.forEach(b => { UNITS_BY_KEY[nk(b)] = UNITS_OF_DEPT[b]; });
+  DEPTS.forEach(d => { if (!UNITS_BY_KEY[nk(d)]) UNITS_BY_KEY[nk(d)] = [d]; });
   const alias = { bd:'Business Development', cx:'Customer Experience', nodalsecurity:'Nodal & Security', nodalandsecurity:'Nodal & Security', humanresources:'HR' };
-  Object.keys(alias).forEach(k => { if (LIB[alias[k]] && !DEPT_BY_KEY[k]) DEPT_BY_KEY[k] = alias[k]; });
+  Object.keys(alias).forEach(k => { if (UNITS_OF_DEPT[alias[k]] && !UNITS_BY_KEY[k]) UNITS_BY_KEY[k] = UNITS_OF_DEPT[alias[k]]; });
+}
+/* department + who submitted  ->  reporting unit (each head of a shared department is tracked separately) */
+/* short label for charts: "Nitesh Verma (BD)" instead of "Business Development — Nitesh Verma" */
+function shortUnit(u){
+  const L = LIB[u]; if (!L) return u;
+  if (!L.split) return u;
+  const w = L.dept.split(/\s+/).filter(Boolean);
+  const abbr = w.length > 1 ? w.map(x => x[0].toUpperCase()).join('') : L.dept.slice(0, 4);
+  return L.head + ' (' + abbr + ')';
+}
+function resolveUnit(deptRaw, ownerRaw){
+  const units = UNITS_BY_KEY[nk(deptRaw)];
+  if (!units || !units.length) return null;
+  if (units.length === 1) return units[0];
+  const ok = nk(ownerRaw);
+  if (ok){
+    let hit = units.find(u => nk(LIB[u].head) === ok);
+    if (!hit) hit = units.find(u => { const h = nk(LIB[u].head); return h && (h.indexOf(ok) === 0 || ok.indexOf(h) === 0); });
+    if (!hit){
+      const first = nk(String(ownerRaw).trim().split(/\s+/)[0]);
+      if (first) hit = units.find(u => nk(LIB[u].head).indexOf(first) === 0);
+    }
+    if (hit) return hit;
+  }
+  DIAG.unmatchedOwner = (DIAG.unmatchedOwner || 0) + 1;
+  if (!DIAG.ownerSamples) DIAG.ownerSamples = [];
+  const lbl = (ownerRaw || '(blank)') + ' → ' + deptRaw;
+  if (DIAG.ownerSamples.length < 5 && DIAG.ownerSamples.indexOf(lbl) < 0) DIAG.ownerSamples.push(lbl);
+  return units[0];                                   // unknown submitter: keep the data, flag it in the data check
 }
 const FIELD_ALIASES = {
   department:['department','function','dept'], kpi:['kpi','kpiname'], kra:['kra','kraname'], toDate:['todate','reportingperiodtodate','to','weekend','periodto'],
@@ -836,11 +879,11 @@ let DIAG = { total:0, scored:0, unknownKpi:0, badDate:0, samples:[] };
 const DIR_WORDS = { higher:'higher', lower:'lower', target:'target', binary:'binary', h:'higher', l:'lower', t:'target', b:'binary' };
 
 function normalise(raw){
-  DIAG = { total: raw.length, scored:0, unknownKpi:0, badDate:0, samples:[] };
+  DIAG = { total: raw.length, scored:0, unknownKpi:0, badDate:0, samples:[], unmatchedOwner:0, ownerSamples:[] };
   const map = new Map();
   raw.forEach((rr, idx) => {
     const r = canon(rr);
-    const dept = DEPT_BY_KEY[nk(r.department)];
+    const dept = resolveUnit(r.department, r.submissionOwner);     // "dept" = reporting unit (department, or department + head)
     const cdef = dept ? KPI_BY_KEY[nk(dept) + '|' + nk(r.kpi)] : null;
     const isNew = r.kraWeight !== undefined && r.kraWeight !== '';     // submitted with the v4 form
     if (!dept || (!cdef && !isNew)){ DIAG.unknownKpi++; if (DIAG.samples.length < 5) DIAG.samples.push((r.department || '?') + ' / ' + (r.kpi || '?')); return; }
@@ -1142,7 +1185,7 @@ function renderExec(){
     '<div class="big">' + (ov === null ? '—' : ov.toFixed(1) + '%') + '</div>' +
     (ov === null ? '' : '<span class="rag pill ' + ragOf(ov) + '">' + RAG_LABEL[ragOf(ov)] + '</span>') +
     '<div class="meta">Previous week ' + pct(sP.overall) + ' · MTD ' + pct(sM.overall) + ' · YTD ' + pct(sY.overall) + '</div>' +
-    '<div class="meta">' + submitted + ' of ' + DEPTS.length + ' functions submitted · ' + ragLegendText() + '</div>' +
+    '<div class="meta">' + submitted + ' of ' + DEPTS.length + ' reports submitted · ' + ragLegendText() + '</div>' +
     (nnFails.length ? '<div class="alert">Red alert: ' + nnFails.length + ' non-negotiable KPI' + (nnFails.length > 1 ? 's' : '') + ' failed — ' + nnFails.map(r => esc(r.kpi) + ' (' + esc(r.dept) + ')').join(', ') + '</div>' : '');
 
   $('catCards').innerHTML = CATEGORIES.map(c => {
@@ -1151,7 +1194,7 @@ function renderExec(){
     const v = mean(ds.map(d => DS(sW, d)).filter(x => x !== null));
     const p = mean(ds.map(d => DS(sP, d)).filter(x => x !== null));
     const r = v === null ? 'NA' : ragOf(v);
-    return '<div class="cat ' + r + '"><div class="n">' + c + '</div><div class="v t-' + r + '">' + pct(v) + '</div><div class="s">' + ds.join(', ') + ' · ' + deltaHtml(v, p) + '</div></div>';
+    return '<div class="cat ' + r + '"><div class="n">' + c + '</div><div class="v t-' + r + '">' + pct(v) + '</div><div class="s">' + [...new Set(ds.map(u => LIB[u].dept))].join(', ') + ' · ' + deltaHtml(v, p) + '</div></div>';
   }).join('');
 
   const cnt = { G:0, A:0, R:0, NA:0 }; wkRows.forEach(r => cnt[r.rag]++);
@@ -1182,7 +1225,7 @@ function renderExec(){
   const att = attentionItems(W).slice(0, 8);
   $('execAtt').innerHTML = att.length ? att.map(attLi).join('') : '<li><span></span><span class="muted">Nothing flagged for this week.</span></li>';
 
-  barChart('fnChart', { horizontal:true, labels: DEPTS, title:'Function score this week vs YTD', series:[
+  barChart('fnChart', { horizontal:true, labels: DEPTS.map(shortUnit), title:'Function score this week vs YTD', series:[
       { name:'This week', values: DEPTS.map(d => DS(sW, d)), colors: DEPTS.map(d => ragColor(DS(sW, d))) },
       { name:'YTD', values: DEPTS.map(d => DS(sY, d)), color:'rgba(42,95,224,.35)' } ],
     refs:[{ v:RAG.green, c:'#12966E', l:'Green ' + RAG.green + '%' }, { v:RAG.amber, c:'#D8960F', l:'Amber ' + RAG.amber + '%' }], empty:'No submissions for this week yet.' });
@@ -1295,7 +1338,7 @@ function renderTrends(){
     '<div class="mini"><div class="v ' + (chg === null ? '' : chg >= 0 ? 'delta-up' : 'delta-down') + '">' + (chg === null ? '—' : (chg >= 0 ? '+' : '') + chg.toFixed(1) + '%') + '</div><div class="l">Change vs previous ' + lbl + '</div></div>';
   const old = LINE_STATE.trChart && LINE_STATE.trChart._fn === fn ? LINE_STATE.trChart.series : null;
   const series = [{ name: fn || 'Overall', values: main, color:'#16299E', fill:true, width:2.6, pointColors: ragColor, fmtPoint: v => v.toFixed(1) + '%' }];
-  if (!fn) DEPTS.forEach((d, i) => series.push({ name:d, values: scores.map(s => DS(s, d)), color:PALETTE[i % PALETTE.length], hidden: old && old[i+1] ? old[i+1].hidden : true, width:1.6, pointR:2.4, fmtPoint: v => v.toFixed(1) + '%' }));
+  if (!fn) DEPTS.forEach((d, i) => series.push({ name: shortUnit(d), values: scores.map(s => DS(s, d)), color:PALETTE[i % PALETTE.length], hidden: old && old[i+1] ? old[i+1].hidden : true, width:1.6, pointR:2.4, fmtPoint: v => v.toFixed(1) + '%' }));
   series.push({ name:'Green ' + RAG.green + '%', values: keys.map(() => RAG.green), color:'rgba(18,150,110,.7)', dash:true, noPoints:true, width:1.2 });
   series.push({ name:'Amber ' + RAG.amber + '%', values: keys.map(() => RAG.amber), color:'rgba(216,150,15,.7)', dash:true, noPoints:true, width:1.2 });
   lineChart('trChart', { labels: keys.map(k => groups.get(k).label), series, min:40, max:110, fmt: v => v.toFixed(0) + '%', height:300, empty:'No submissions in this range yet.', title:'Performance trend' });
@@ -1340,7 +1383,7 @@ function renderSubmissions(){
   const overdue = todayISO() > due;
   const late = done.filter(d => submittedOnTime(d, W) === false).length;
   $('subCards').innerHTML = [
-    ['Active functions', DEPTS.length, ''], ['Submitted this week', done.length + (late ? ' <small class="t-A">(' + late + ' late)</small>' : ''), 'ok'], ['Not submitted', pending.length, pending.length ? 'risk' : ''], ['Submission rate', rate.toFixed(1) + '%', rate >= 100 ? 'ok' : 'risk']
+    ['Active reporters', DEPTS.length, ''], ['Submitted this week', done.length + (late ? ' <small class="t-A">(' + late + ' late)</small>' : ''), 'ok'], ['Not submitted', pending.length, pending.length ? 'risk' : ''], ['Submission rate', rate.toFixed(1) + '%', rate >= 100 ? 'ok' : 'risk']
   ].map(([l, v, c]) => '<div class="kpi-card ' + c + '"><div class="val">' + v + '</div><div class="lbl">' + l + '</div></div>').join('');
   $('pendTable').querySelector('tbody').innerHTML = pending.map(d => '<tr><td><b>' + esc(d) + '</b></td><td>' + esc(LIB[d].owner) + '</td><td>Mon ' + fmtDate(due) + '</td><td>' + (overdue ? '<span class="badge off">Overdue</span>' : '<span class="badge warn">Due today</span>') + '</td></tr>').join('');
   $('pendEmpty').style.display = pending.length ? 'none' : 'flex';
@@ -1493,7 +1536,7 @@ function renderReport(){
       notes.map(o => '<tr><td>' + esc(o.w.label) + '</td><td>' + esc(o.r.keyChallenges || '') + '</td><td>' + esc(o.r.correctiveAction || '') + '</td><td>' + esc([o.r.actionOwner, o.r.actionDueDate ? fmtDate(toISODate(o.r.actionDueDate)) : ''].filter(Boolean).join(' · ')) + '</td><td>' + esc(o.r.supportRequired || '') + '</td><td>' + (o.r.criticalIssue === 'Yes' ? '<b class="t-R">Yes</b> — ' + esc(o.r.criticalIssueDetails || '') : 'No') + '</td></tr>').join('') + '</tbody></table></div>' : '<p class="muted">Nothing reported for this period.</p>') + '</div>';
   }
   out.innerHTML = html;
-  if (!dsel) barChart('rpChart', { horizontal:true, labels: list.map(x => x.d), title:'Department scores', series:[{ name: win.label, values: list.map(x => x.score), colors: list.map(x => ragColor(x.score)) }].concat(win.prev ? [{ name: win.prev.label, values: list.map(x => x.prev), color:'rgba(42,95,224,.3)' }] : []),
+  if (!dsel) barChart('rpChart', { horizontal:true, labels: list.map(x => shortUnit(x.d)), title:'Department scores', series:[{ name: win.label, values: list.map(x => x.score), colors: list.map(x => ragColor(x.score)) }].concat(win.prev ? [{ name: win.prev.label, values: list.map(x => x.prev), color:'rgba(42,95,224,.3)' }] : []),
     refs:[{ v:RAG.green, c:'#12966E', l:'Green ' + RAG.green + '%' }, { v:RAG.amber, c:'#D8960F', l:'Amber ' + RAG.amber + '%' }] });
   else {
     const x = list[0] || deptReport(dsel, win);
@@ -1553,7 +1596,8 @@ function renderData(){
   $('legacyNote').textContent = (rows.length > 600 ? 'Showing first 600 rows — export for the full list. ' : '') +
     'Data check: ' + DIAG.total + ' rows received from the sheet, ' + DIAG.scored + ' KPI results scored' +
     (DIAG.unknownKpi ? ', ' + DIAG.unknownKpi + ' old rows skipped because the department/KPI is not in the current KRA/KPI list (e.g. ' + DIAG.samples.join('; ') + ')' : '') +
-    (DIAG.badDate ? ', ' + DIAG.badDate + ' rows skipped because the To Date could not be read' : '') + '.';
+    (DIAG.badDate ? ', ' + DIAG.badDate + ' rows skipped because the To Date could not be read' : '') +
+    (DIAG.unmatchedOwner ? ', ' + DIAG.unmatchedOwner + ' rows where "Submitted by" did not match a department head, so they were counted under the first head (' + DIAG.ownerSamples.join('; ') + ')' : '') + '.';
 }
 $('dtTable').addEventListener('click', e => { const b = e.target.closest('.ed-btn'); if (!b) return; const w = WEEKS.find(x => x.key === +b.dataset.wk) || DATA.find(r => r.wk.key === +b.dataset.wk).wk; openEditor(b.dataset.dept, w); });
 ['dtFn','dtRag','dtScope'].forEach(id => $(id).addEventListener('change', renderData));
@@ -1694,7 +1738,7 @@ function renderSetup(){
   $('suEditor').innerHTML =
     '<div class="su-dept"><div class="row-flex">' +
       '<div class="field" style="min-width:220px"><label>Department name</label><input data-f="name" value="' + esc(d.name) + '"></div>' +
-      '<div class="field" style="flex:1;min-width:260px"><label>Department head(s) — separate with commas (more than one gives a dropdown in the form)</label><input data-f="heads" value="' + esc(d.heads.join(', ')) + '"></div>' +
+      '<div class="field" style="flex:1;min-width:260px"><label>Department head(s) — separate with commas (more than one gives a dropdown in the form and a separate report per person here)</label><input data-f="heads" value="' + esc(d.heads.join(', ')) + '"></div>' +
       '<div class="field"><label>Category</label><select data-f="cat">' + CATEGORIES.map(c => '<option' + (c === d.cat ? ' selected' : '') + '>' + c + '</option>').join('') + '</select></div>' +
       '<div class="field"><button class="btn secondary small su-del-dept" style="margin-bottom:1px;color:var(--risk)">Delete department</button></div>' +
     '</div><p class="su-wt ' + (tw === 100 ? 't-G' : 't-R') + '">KRA weights total: <b>' + tw + '%</b>' + (tw === 100 ? ' ✓' : ' — must total 100%') + '</p></div>' +
@@ -1841,7 +1885,7 @@ function generateDemo(){
   DEPTS.forEach((d, di) => {
     const bias = [2, -6, -1, 3, -10, 1, 4, -3, 0, 2][di % 10];
     weeks.forEach((wk, wi) => {
-      if ((skip[d] || []).includes(wi)) return;
+      if ((skip[LIB[d].dept] || []).includes(wi)) return;
       const rows = [];
       LIB[d].kras.forEach(k => k.kpis.forEach(p => {
         let pc = 92 + bias + (rnd() - 0.5) * 34 + Math.sin(wi / 3 + di) * 6;
@@ -1858,12 +1902,12 @@ function generateDemo(){
           kpiComment: rnd() < 0.06 ? 'Includes carry-over from previous week' : '' });
       }));
       const reds = rows.filter(r => r.status === 'Red').length;
-      const crit = d === 'Nodal & Security' && wi === last;
+      const crit = LIB[d].dept === 'Nodal & Security' && wi === last;
       const late = rnd() < 0.15;
-      const common = { submissionId: 'DEMO-' + di + '-' + wi, timestamp: fromDayNum(dayNum(wk.to) + (late ? 3 : 1)) + 'T10:' + pad(di) + ':00Z', fromDate: wk.from, toDate: wk.to, department:d, departmentHead: LIB[d].owner,
-        submissionOwner: LIB[d].heads[wi % LIB[d].heads.length] || '', keyAchievements:'Planned weekly activities completed across properties.',
+      const common = { submissionId: 'DEMO-' + di + '-' + wi, timestamp: fromDayNum(dayNum(wk.to) + (late ? 3 : 1)) + 'T10:' + pad(di) + ':00Z', fromDate: wk.from, toDate: wk.to, department: LIB[d].dept, departmentHead: (LIB[d].allHeads || []).join(' & '),
+        submissionOwner: LIB[d].owner || '', keyAchievements:'Planned weekly activities completed across properties.',
         keyChallenges: reds ? reds + ' KPI(s) below threshold — mainly manpower and vendor dependencies.' : '', correctiveAction: reds ? 'Daily review by function head; recovery plan shared with management.' : '',
-        actionOwner: reds ? LIB[d].heads[0] : '', actionDueDate: reds ? fromDayNum(dayNum(wk.to) + 8) : '',
+        actionOwner: reds ? LIB[d].owner : '', actionDueDate: reds ? fromDayNum(dayNum(wk.to) + 8) : '',
         supportRequired: reds > 2 ? 'Faster approvals on vendor payments.' : '', nextWeekPriorities:'Close pending actions; improve Red KPIs.', criticalIssue: crit ? 'Yes' : 'No', criticalIssueDetails: crit ? 'One incident at Hinjewadi property — police informed, internal inquiry under way.' : '' };
       rows.forEach(r => out.push(Object.assign({ _row: rowNo++ }, common, r)));
     });
