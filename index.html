@@ -147,6 +147,12 @@
   .btn.secondary{background:var(--card);color:var(--blue-dark);border:1.5px solid var(--border);box-shadow:none;}
   .btn.secondary:hover{background:var(--accent-tint);transform:none;}
   .btn.small{padding:8px 14px;font-size:.78rem;}
+  .btn.sheet{background:linear-gradient(135deg,#1e8e3e,#0f6b2f);text-decoration:none;display:inline-flex;align-items:center;gap:8px;box-shadow:0 8px 18px -8px rgba(15,107,47,.5);}
+  .btn.sheet svg{width:16px;height:16px;}
+  .tracker-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:14px;margin-top:14px;}
+  .tracker-card{border:1px solid var(--border);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px;background:var(--card);}
+  .tracker-card .tc-name{font-weight:700;color:var(--ink);font-size:.95rem;}
+  .tracker-card .tc-head{color:var(--muted);font-size:.8rem;}
 
   .active-filter-chip{
     display:inline-flex;align-items:center;gap:6px;background:var(--accent-tint);color:var(--blue-dark);
@@ -368,6 +374,7 @@
       <button class="nav-item" data-tab="submissions"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>Submission Tracker<span class="nav-badge" id="navPendingBadge" style="display:none;"></span></button>
       <button class="nav-item" data-tab="attention"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4"/><path d="M12 17h.01"/><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>Management Attention<span class="nav-badge risk" id="navAttBadge" style="display:none;"></span></button>
       <button class="nav-item" data-tab="reports"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/><path d="M8 13h8M8 17h5"/></svg>Reports &amp; Appraisal</button>
+      <button class="nav-item" data-tab="trackers"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>Activity Trackers</button>
       <button class="nav-item" data-tab="data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>KPI Data &amp; Edits</button>
       <div class="nav-section-label">Management admin</div>
       <button class="nav-item" data-tab="setup"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>KRA &amp; KPI Setup</button>
@@ -434,6 +441,7 @@
             <div class="field"><label for="fnSel">Function</label><select id="fnSel"></select></div>
             <div class="field"><label for="fnPeriod">Period</label><select id="fnPeriod"><option value="week">Selected week</option><option value="mtd">Month to date</option><option value="qtd">Quarter to date</option><option value="ytd">Year to date</option></select></div>
             <div class="field"><button class="btn small" id="fnEditBtn" style="margin-bottom:1px;">Edit this submission</button></div>
+            <div class="field"><a class="btn small sheet" id="fnTrackerBtn" href="#" target="_blank" rel="noopener" style="margin-bottom:1px;display:none;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>Open Activity Tracker</a></div>
             <p class="row-count" id="fnMeta" style="margin:0 0 10px;"></p>
           </div>
         </div>
@@ -491,6 +499,13 @@
           </div>
           <div class="scroll-x"><table id="attTable"><thead><tr><th>Priority</th><th>Issue</th><th>Function</th><th>KRA / KPI</th><th>Detail</th><th>Owner</th></tr></thead><tbody></tbody></table></div>
           <div class="empty-state" id="attEmpty" style="display:none;">Nothing flagged for this week.</div>
+        </div>
+      </section>
+
+      <!-- ============ ACTIVITY TRACKERS ============ -->
+      <section class="tab-panel" id="tab-trackers">
+        <div class="panel"><div class="panel-head"><div><h2>Department Activity Trackers</h2><p class="panel-hint">Each department logs its weekly activities in its own Google Sheet; the sheet's Weekly Scorecard gives the figures typed into the form. Each sheet is shared only with its department head, so a Google account without access sees Google's "You need access" page.</p></div></div>
+          <div class="tracker-grid" id="trackerGrid"></div>
         </div>
       </section>
 
@@ -678,6 +693,21 @@ function validConfig(c){
 ===================================================================== */
 const KPI_REVISION = '2026-10-10';
 const MERGED_COMPLAINT_KPI = 'Complaint Resolution Time (≤ 24 hrs) & Repeat Complaint Rate';
+/* Department activity-tracker Google Sheets (each sheet is shared only with its own department) */
+const TRACKER_SHEETS = {
+  'Marketing': 'https://docs.google.com/spreadsheets/d/1dcBqDxAyXZMNTuOFs3D1ZNimqoqPqNbNShTxvXWKq24/edit?gid=895852307#gid=895852307',
+  'Sales': 'https://docs.google.com/spreadsheets/d/1geZ5Q_O6hELt0lINeixVEAfu7rzz44_LyLDmruvJUoQ/edit?gid=491430187#gid=491430187',
+  'Operations': 'https://docs.google.com/spreadsheets/d/1XeKWDey9mj7oACU-r7ehQv7cZkJGE6x3iA2s8EClq7M/edit?gid=527518334#gid=527518334',
+  'Customer Experience': 'https://docs.google.com/spreadsheets/d/1_1bC5zxe_1Ee_0scClKW8rR33ulVN6VklouTKnPdV5k/edit?gid=778668545#gid=778668545',
+  'Business Development': 'https://docs.google.com/spreadsheets/d/1XG2yildlnl1rMZNs6Mfq5BmMlgmzsdctx14GEUfgMY0/edit?gid=177383776#gid=177383776',
+  'HR': 'https://docs.google.com/spreadsheets/d/19QFxZMBDD66FT64KBu65NjXqk-TRwzT28QX_nR0_uAs/edit',
+  'Finance': 'https://docs.google.com/spreadsheets/d/1qYvGHzTExpqyPtG-CR-7BLLZkmJzEvLcFey9P4lHrJE/edit?gid=665047281#gid=665047281',
+  'Nodal & Security': 'https://docs.google.com/spreadsheets/d/1ivs_lUrVYVzu7hhE-ZvMJyVbJiNO0qNiMJsXPWIU7fk/edit',
+  'Purchase': 'https://docs.google.com/spreadsheets/d/1jMpyAhIikuLA0PO9zTJ7HkzdpOFETHlOAiWm-YcaKqc/edit?gid=2119722747#gid=2119722747',
+  'Data Analytics': 'https://docs.google.com/spreadsheets/d/1JX5YrE6HZWtDg15cUUY6lOdB2YrvxACquKRveTZHeao/edit',
+  'Management': 'https://docs.google.com/spreadsheets/d/1dVD_oRyGvWo4Brr21UrsIOUPpnGf9YZhrXB69s3zJj0/edit'
+};
+
 /* old KPI name -> new KPI name (history of the old name continues under the new one) */
 const KPI_RENAMES = {
   'Customer Experience|NPS Score': 'NPS Score [Student Pulse Survey]',
@@ -691,7 +721,9 @@ const MULTI_KPI = {
   'Business Development|New Property in Pipeline': { mode:'sum', parts:[{label:'MIT'},{label:'Non-MIT'},{label:'WP'}] },
   ['Operations|' + MERGED_COMPLAINT_KPI]: { mode:'avg', parts:[
     { label:'Resolution time (hrs)', target:24, better:'lower', was:'Complaint Resolution Time (≤ 24 hrs)' },
-    { label:'Repeat complaints', target:2, better:'lower', was:'Repeat Complaint Rate' }] }
+    { label:'Repeat complaints', target:2, better:'lower', was:'Repeat Complaint Rate' }],
+    /* recorded with the figures but not scored: the form shows Resolved ÷ Total as a % */
+    extra:[{ label:'Total complaints' }, { label:'Resolved complaints' }] }
 };
 /* Finance and HR KRA/KPI sets of 15 Oct 2026. A KPI setup saved in the Google Sheet before this
    change still has the old Finance / HR KPIs — those two departments are replaced here so the form
@@ -1243,8 +1275,8 @@ document.addEventListener('click', e => {
 });
 
 /* ================= rendering ================= */
-const TITLES = { exec:'Executive Dashboard', functions:'Function Drill-down', trends:'Performance Trends', submissions:'Submission Tracker', attention:'Management Attention', reports:'Reports & Appraisal', data:'KPI Data & Edits', setup:'KRA & KPI Setup' };
-const RENDERERS = { exec:[() => renderExec()], functions:[() => renderFunction()], trends:[() => renderTrends(), () => renderKpiTrend()], submissions:[() => renderSubmissions()], attention:[() => renderAttention()], reports:[() => renderReport()], data:[() => renderData()], setup:[() => renderSetup()] };
+const TITLES = { exec:'Executive Dashboard', functions:'Function Drill-down', trends:'Performance Trends', submissions:'Submission Tracker', attention:'Management Attention', reports:'Reports & Appraisal', trackers:'Activity Trackers', data:'KPI Data & Edits', setup:'KRA & KPI Setup' };
+const RENDERERS = { exec:[() => renderExec()], functions:[() => renderFunction()], trends:[() => renderTrends(), () => renderKpiTrend()], submissions:[() => renderSubmissions()], attention:[() => renderAttention()], reports:[() => renderReport()], trackers:[() => renderTrackers()], data:[() => renderData()], setup:[() => renderSetup()] };
 let RENDER_ERRORS = [];
 function safeRender(tab){
   (RENDERERS[tab] || []).forEach(fn => {
@@ -1349,8 +1381,20 @@ function sparkline(dept, kpi){
   const col = ragColor(vals[vals.length-1]);
   return '<svg class="spark" viewBox="0 0 90 26" role="img" aria-label="6-week trend"><line x1="0" x2="90" y1="' + ty + '" y2="' + ty + '" stroke="currentColor" stroke-opacity=".25" stroke-dasharray="2 2"/><polyline fill="none" stroke="' + col + '" stroke-width="1.8" points="' + line + '"/><circle cx="' + last[0] + '" cy="' + last[1] + '" r="2.6" fill="' + col + '"/></svg>';
 }
+function renderTrackers(){
+  const g = $('trackerGrid'); if (!g) return;
+  const sheetIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M3 15h18M9 3v18"/></svg>';
+  const names = DEPTS.filter(n => TRACKER_SHEETS[n]).concat(Object.keys(TRACKER_SHEETS).filter(n => !DEPTS.includes(n)));
+  g.innerHTML = names.map(n => '<div class="tracker-card"><div class="tc-name">' + esc(n) + '</div><div class="tc-head">' + esc(LIB[n] ? LIB[n].owner : '') + '</div>' +
+    '<a class="btn small sheet" href="' + TRACKER_SHEETS[n] + '" target="_blank" rel="noopener">' + sheetIcon + 'Open Activity Tracker</a></div>').join('');
+}
+function fnTrackerBtn(dept){
+  const b = $('fnTrackerBtn'); if (!b) return;
+  const url = TRACKER_SHEETS[dept]; b.style.display = url ? '' : 'none'; if (url) b.href = url;
+}
 function renderFunction(){
   const d = LIB[$('fnSel').value] ? $('fnSel').value : DEPTS[0];
+  fnTrackerBtn(d);
   const period = $('fnPeriod').value;
   const rows = rowsFor(period, W, d);
   const wkRows = rowsFor('week', W, d);
