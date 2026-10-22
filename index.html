@@ -599,7 +599,7 @@ const DEFAULT_RAW = [
   ['Brand, Campaign & BTL Growth', 20, [['Active Campaign Management & Optimization',3,'campaigns / week','h','n'],['BTL Activities / Activations Supported',1,'activity / week','h','n'],['BTL Leads / Enquiries Generated',10,'leads / week','h','n']]],
   ['Marketing Execution & Accountability', 15, [['Lead Assignment & Follow-up SLA',95,'%','h','p'],['Marketing Task / Report Closure Rate',90,'%','h','p'],['Management / Creative Support Tasks Completed',90,'%','h','p']]]
  ]],
- ['Sales', 'Shakti Pujari', 'Revenue', [
+ ['Sales', 'Pravin Shinde', 'Revenue', [
   ['Revenue & Occupancy Achievement', 40, [['Bookings (net beds)',25,'beds / week','h','n'],['Revenue',300000,'₹ / week','h','c'],['Occupancy % (portfolio)',90,'%','h','p']]],
   ['Lead-to-Booking Conversion Efficiency', 25, [['Lead → Booking Conversion %',18,'%','h','p'],['Site Visit → Booking Conversion %',40,'%','h','p'],['Unconverted Students Converted',2,'students / week','h','n']]],
   ['Growth Pipeline — New Inventory & B2B', 20, [['New Acquisition Opportunities (MIT, Non-MIT, WP)',6,'opportunities / week','h','n'],['Pipeline Beds Advanced a Stage',50,'beds / week','h','n'],['B2B ACV Won',500000,'₹ / week','h','c'],['Lost Data Analysis',100,'records / week','h','n']]],
@@ -611,7 +611,7 @@ const DEFAULT_RAW = [
   ['Operational Productivity & Resident Engagement', 20, [['Cost Optimisation Initiatives',1,'initiatives / week','h','n'],['AAALAY Ambassador Identification & Activation',1,'ambassadors / week','h','n'],['Operational Productivity Improvement',100,'% of plan','h','p']]],
   ['Ops Execution & Accountability', 15, [['Daily Task — Operation Managers',100,'% completed','h','p'],['Safety Incidents',0,'incidents / week','l','n',1]]]
  ]],
- ['Customer Experience', 'Pravin Shinde & Akash Swami', 'Customer Experience', [
+ ['Customer Experience', 'Akash Swami', 'Customer Experience', [
   ['Resident Satisfaction', 40, [['CSAT Score %',85,'%','h','p'],['NPS Score [Student Pulse Survey]',40,'score','h','n'],['Complaint Resolution within SLA %',90,'%','h','p']]],
   ['Engagement & Retention', 25, [['Renewal / Retention Rate %',80,'%','h','p'],['Engagement Events Held',1,'events / week','h','n'],['Avg Response Time to Queries',4,'hours','l','d']]],
   ['Experience Growth', 20, [['New Service Initiatives Launched',1,'initiatives / week','h','n'],['Positive Reviews Generated',5,'reviews / week','h','n'],['Referrals from Residents',3,'referrals / week','h','n']]],
@@ -732,7 +732,18 @@ const DEPT_REVISIONS = {
   'Finance': ['Daily & Weekly Verification Checks Completed', 'Statutory Dues Paid On Time (TDS, GST, PF, PT, ESIC, LWF)', 'Daily Rent / Fee Collection & Bank Reconciliation'],
   'HR': ['Monthly Attrition Rate', 'Positions Filled within TAT', 'HR Calendar Executed On Time (training & engagement)']
 };
+/* Department head changes of 21 Oct 2026: Sales is now headed by Pravin Shinde (Shakti Pujari removed)
+   and Customer Experience by Akash Swami alone (Pravin Shinde moved to Sales). A setup saved in the
+   Google Sheet before this date still has the old heads, so they are replaced here. A setup saved by
+   management on or after HEAD_REVISION is used exactly as saved. */
+const HEAD_REVISION = '2026-10-21';
+const HEAD_CHANGES = { 'Sales': ['Pravin Shinde'], 'Customer Experience': ['Akash Swami'] };
 function reviseDepts(cfg){
+  const savedOn = cfg.savedAt ? String(cfg.savedAt).slice(0, 10) : '';
+  if (!savedOn || savedOn < HEAD_REVISION) Object.keys(HEAD_CHANGES).forEach(name => {
+    const d = cfg.depts.find(x => x.name === name);
+    if (d) d.heads = HEAD_CHANGES[name].slice();
+  });
   Object.keys(DEPT_REVISIONS).forEach(name => {
     const d = cfg.depts.find(x => x.name === name);
     if (!d || d.kras.some(k => k.kpis.some(p => DEPT_REVISIONS[name].includes(p.name)))) return;
