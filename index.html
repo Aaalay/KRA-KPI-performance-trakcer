@@ -109,6 +109,8 @@
   @keyframes spin{to{transform:rotate(360deg);}}
 
   .content{max-width:1320px;width:100%;margin:0 auto;padding:22px 28px 60px;}
+  .app-foot{margin-top:34px;padding-top:16px;border-top:1px solid var(--border);text-align:center;font-size:.78rem;color:var(--muted);}
+  .app-version{display:block;margin-top:6px;font-size:.72rem;color:var(--muted);letter-spacing:.02em;}
 
   /* Error / info banner */
   .banner{
@@ -560,6 +562,7 @@
           <p class="note">Changes apply to the form and the dashboard as soon as you click <b>Save for everyone</b> (management PIN required). Past submissions keep the target that was in force when they were submitted.</p>
         </div>
       </section>
+      <footer class="app-foot">AAALAY Weekly KRA &amp; KPI Performance Tracker<span class="app-version"></span></footer>
     </main>
   </div>
 </div>
@@ -692,6 +695,16 @@ function validConfig(c){
    after KPI_REVISION is used exactly as saved.
 ===================================================================== */
 const KPI_REVISION = '2026-10-10';
+/* ---- VERSION ----
+   Shown in the footer of the page. Raise the number and the date with EVERY change to this file
+   (also update the same lines in the form, so both always show the same version).
+   Change log
+     5.1  21 Oct 2026  Operations complaint KPI: Total / Resolved complaints boxes · Activity Tracker buttons
+                       for every department · Wk 27–29 re-opened until Sat 24 Oct 2026 · Sales head Pravin Shinde,
+                       Customer Experience head Akash Swami · version shown in the footer
+     5.0  10 Oct 2026  Revised KRA / KPI sets for all departments */
+const APP_VERSION = '5.1';
+const APP_UPDATED = '21 Oct 2026';
 const MERGED_COMPLAINT_KPI = 'Complaint Resolution Time (≤ 24 hrs) & Repeat Complaint Rate';
 /* Department activity-tracker Google Sheets (each sheet is shared only with its own department) */
 const TRACKER_SHEETS = {
@@ -2094,6 +2107,7 @@ buildWeeks(); fillReportPeriods();
 const hadLocal = loadLocalCopy();   // instant first paint from the last download
 loadData(hadLocal);                 // then refresh quietly from the Google Sheet
 
+document.querySelectorAll('.app-version').forEach(el => { el.textContent = 'Performance Tracker · Version ' + APP_VERSION + ' · Updated ' + APP_UPDATED; });
 </script>
 </body>
 </html>
