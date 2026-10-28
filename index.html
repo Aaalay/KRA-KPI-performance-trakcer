@@ -679,7 +679,7 @@ const SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwywd4UHY81VFDtukwbl
    When the hour is over, Google renews the sign-in quietly; if it cannot, the sign-in card
    comes back — typed entries are kept on this device, nothing is lost.
 ===================================================================== */
-const GOOGLE_CLIENT_ID = 'PASTE-YOUR-CLIENT-ID.apps.googleusercontent.com';   /* same value as OAUTH_CLIENT_ID in AAALAY_Code.gs */
+const GOOGLE_CLIENT_ID = '1008840573906-bkrhfh2kam65t8aua6f4f53sqm8bvjqi.apps.googleusercontent.com';   /* same value as OAUTH_CLIENT_ID in AAALAY_Code.gs */
 const ALLOWED_DOMAIN = 'aaalay.com';
 const PAGE = 'dashboard';
 const TOKEN_KEY = 'aaalay_idt_v1';
@@ -749,8 +749,8 @@ function signOut(){
   location.reload();
 }
 function initGoogle(){
-  if (!/apps\.googleusercontent\.com$/.test(GOOGLE_CLIENT_ID)){ showGate('Sign-in is not set up yet: GOOGLE_CLIENT_ID is missing in this page.', true); return; }
-  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID, callback: r => useToken(r.credential), auto_select: true, hd: ALLOWED_DOMAIN,
+  if (!/^\d+-[a-z0-9]+\.apps\.googleusercontent\.com$/.test(GOOGLE_CLIENT_ID.trim())){ showGate('Sign-in is not set up yet: paste the Google Client ID into GOOGLE_CLIENT_ID in this page (it looks like 123456789012-abc….apps.googleusercontent.com).', true); return; }
+  google.accounts.id.initialize({ client_id: GOOGLE_CLIENT_ID.trim(), callback: r => useToken(r.credential), auto_select: true, hd: ALLOWED_DOMAIN,
     cancel_on_tap_outside: false, use_fedcm_for_prompt: true, context: 'signin', itp_support: true });
   google.accounts.id.renderButton(document.getElementById('gsiBtn'), { theme:'filled_blue', size:'large', shape:'pill', text:'signin_with', width: 300, logo_alignment:'left' });
   if (!ME){ agStatus(''); if (!tokenLeft(sessionStorage.getItem(TOKEN_KEY))) google.accounts.id.prompt(); }
